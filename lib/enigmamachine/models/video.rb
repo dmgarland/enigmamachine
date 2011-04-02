@@ -214,7 +214,7 @@ class Video
   # a GET request to the video's callback_url.
   #
   def notify_complete
-    EventMachine::HttpRequest.new(callback_url).get :timeout => 10 unless callback_url.nil?
+    EventMachine::HttpRequest.new(callback_url).get :timeout => 10 unless callback_url.blank?
   end
 
   # Downloads a video from a remote location via HTTP
