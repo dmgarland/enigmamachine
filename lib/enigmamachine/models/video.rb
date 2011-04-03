@@ -14,7 +14,7 @@ class Video
   property :created_at, DateTime
   property :updated_at, DateTime
   property :encoder_id, Integer, :required => true
-  property :callback_url, String
+  property :callback_url, String, :length => (1..510)
   property :state, String
 
   # State machine transitions
@@ -194,12 +194,19 @@ class Video
     current_task_index = encoder.encoding_tasks.index(task)
     movie = FFMPEG::Movie.new(file_to_encode)
     encoding_operation = proc do
-      movie.transcode(file_to_encode + task.output_file_suffix, task.command)
+      begin
+        movie.transcode(file_to_encode + task.output_file_suffix, task.command)
+      rescue StandardError => e
+        puts "Couldn't encode for some reason: #{e}"
+        self.encode_error!
+      end
     end
 
     completion_callback = proc do |result|
       if task == encoder.encoding_tasks.last
-        self.complete!
+        unless self.state == "encode_error"
+          self.complete!
+        end
       else
         next_task_index = current_task_index + 1
         next_task = encoder.encoding_tasks[next_task_index]
@@ -214,7 +221,10 @@ class Video
   # a GET request to the video's callback_url.
   #
   def notify_complete
-    EventMachine::HttpRequest.new(callback_url).get :timeout => 10 unless callback_url.blank?
+    unless callback_url.blank?
+      url = callback_url + "?video_id=#{self.id}"
+      EventMachine::HttpRequest.new(url).get :timeout => 10
+    end
   end
 
   # Downloads a video from a remote location via HTTP

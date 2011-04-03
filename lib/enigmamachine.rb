@@ -41,6 +41,8 @@ class EnigmaMachine < Sinatra::Base
   configure :development do
     db = "sqlite3:///#{Dir.pwd}/enigmamachine.sqlite3"
     DataMapper.setup(:default, db)
+    require 'ruby-debug'
+    Debugger.start
   end
 
   configure :test do
@@ -280,6 +282,20 @@ class EnigmaMachine < Sinatra::Base
     else
       @encoders = Encoder.all
       erb :'videos/new'
+    end
+  end
+  
+  # Creates a new video
+  #
+  post '/api/videos' do
+    @video = Video.new(params[:video])
+    @encoder = Encoder.get(params[:encoder_id])
+    @video.encoder = @encoder
+    
+    if @video.save
+      [200, "Encoding"]
+    else
+      [403, @video.errors.to_a.join(", ")]
     end
   end
 
