@@ -16,6 +16,7 @@ class Video
   property :encoder_id, Integer, :required => true
   property :callback_url, String, :length => (1..510)
   property :state, String
+  property :duration, Integer
 
   # State machine transitions
   #
@@ -193,6 +194,9 @@ class Video
   def ffmpeg(task)
     current_task_index = encoder.encoding_tasks.index(task)
     movie = FFMPEG::Movie.new(file_to_encode)
+    self.duration = movie.duration
+    self.save!
+    
     encoding_operation = proc do
       begin
         movie.transcode(file_to_encode + task.output_file_suffix, task.command)
@@ -222,8 +226,9 @@ class Video
   #
   def notify_complete
     unless callback_url.blank?
-      url = callback_url + "?video_id=#{self.id}"
-      EventMachine::HttpRequest.new(url).get :timeout => 10
+      EventMachine::HttpRequest.new(callback_url).get :timeout => 10, :query => {
+        :video_id => self.id, :duration => self.duration
+      }
     end
   end
 
