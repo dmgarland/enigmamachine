@@ -200,6 +200,14 @@ class Video
     encoding_operation = proc do
       begin
         movie.transcode(file_to_encode + task.output_file_suffix, task.command)
+        # Progressive download mp4 video hack
+        if task.output_file_suffix == '.mp4'
+          fast_mp4 = "#{file_to_encode}-fs.mp4"
+          `qt-faststart "#{file_to_encode}.mp4" "#{fast_mp4}"`
+          if File.exist?(fast_mp4)
+            FileUtils.mv(fast_mp4, file_to_encode + ".mp4")
+          end
+        end
       rescue StandardError => e
         puts "Couldn't encode for some reason: #{e}"
         self.encode_error!
